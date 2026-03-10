@@ -3,7 +3,7 @@ package com.example.ProjectManagementSystem.dto.userDtos;
 import com.example.ProjectManagementSystem.entity.enums.Role;
 import lombok.Data;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Data
 public class UserResponse {
@@ -12,6 +12,6 @@ public class UserResponse {
     private String name;
     private String email;
     private Role role;
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 
 }
