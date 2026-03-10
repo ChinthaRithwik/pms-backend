@@ -261,13 +261,8 @@ public class TaskServiceImpl implements TaskService {
         }
     }
 
-    public java.util.Optional<User> getCurrentUser() {
-        String email = securityUtils.getCurrentUserEmail();
-        return userRepository.findByEmail(email);
-    }
-
     private User getAuthenticatedUser() {
-        return getCurrentUser().orElseThrow(() ->
+        return securityUtils.getCurrentUser().orElseThrow(() ->
                 new ResourceNotFoundException("Logged-in user not found"));
     }
 

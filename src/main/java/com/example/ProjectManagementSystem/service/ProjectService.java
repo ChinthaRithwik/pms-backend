@@ -7,6 +7,8 @@ import com.example.ProjectManagementSystem.dto.projectDtos.CreateProjectRequest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
+import java.util.Map;
+
 public interface ProjectService {
 
     Page<ProjectResponse> getAllProjects(Pageable pageable);
@@ -22,4 +24,6 @@ public interface ProjectService {
     ProjectResponse updateProjectStatus(Long id, UpdateProjectStatusRequest request);
 
     void deleteProjectById(Long id);
+
+    Map<String, Long> getProjectStats();
 }

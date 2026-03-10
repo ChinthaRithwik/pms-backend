@@ -9,7 +9,6 @@ import com.example.ProjectManagementSystem.entity.User;
 import com.example.ProjectManagementSystem.entity.enums.StatusTypes;
 import com.example.ProjectManagementSystem.exception.ResourceNotFoundException;
 import com.example.ProjectManagementSystem.repository.ProjectRepository;
-import com.example.ProjectManagementSystem.repository.UserRepository;
 import com.example.ProjectManagementSystem.security.SecurityUtils;
 import com.example.ProjectManagementSystem.service.ProjectService;
 import com.example.ProjectManagementSystem.helper.AllowedTransitions;
@@ -25,7 +24,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Optional;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -33,7 +33,6 @@ public class ProjectServiceImpl implements ProjectService {
 
     private final ProjectRepository projectRepository;
     private final ModelMapper modelMapper;
-    private final UserRepository userRepository;
     private static final Logger logger = LoggerFactory.getLogger(ProjectServiceImpl.class);
     private final SecurityUtils securityUtils;
 
@@ -152,13 +151,19 @@ public class ProjectServiceImpl implements ProjectService {
         logger.info("Project id: {} deleted", id);
     }
 
-    public Optional<User> getCurrentUser() {
-        String email = securityUtils.getCurrentUserEmail();
-        return userRepository.findByEmail(email);
+    @Override
+    public Map<String, Long> getProjectStats() {
+        User user = getAuthenticatedUser();
+        Map<String, Long> stats = new LinkedHashMap<>();
+        for (StatusTypes s : StatusTypes.values()) {
+            stats.put(s.name(), projectRepository.countByOwnerAndStatus(user, s));
+        }
+        stats.put("TOTAL", projectRepository.countByOwner(user));
+        return stats;
     }
 
     private User getAuthenticatedUser() {
-        return getCurrentUser().orElseThrow(() ->
+        return securityUtils.getCurrentUser().orElseThrow(() ->
                 new ResourceNotFoundException("Logged-in user not found"));
     }
 }

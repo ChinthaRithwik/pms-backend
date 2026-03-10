@@ -37,6 +37,11 @@ public class ProjectController {
         return ResponseEntity.ok(projectService.getAllSystemProjects(pageable));
     }
 
+    @GetMapping("/stats")
+    public ResponseEntity<java.util.Map<String, Long>> getProjectStats() {
+        return ResponseEntity.ok(projectService.getProjectStats());
+    }
+
     @PostMapping
     public ResponseEntity<ProjectResponse> createProject(
             @RequestBody @Valid CreateProjectRequest request) {
