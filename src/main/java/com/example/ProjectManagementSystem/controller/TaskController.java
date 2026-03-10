@@ -63,7 +63,7 @@ public class TaskController {
     @PatchMapping("/{taskId}/status")
     public ResponseEntity<TaskResponse> updateStatus(
             @PathVariable Long taskId,
-            @RequestBody UpdateTaskStatusRequest request) {
+            @RequestBody @Valid UpdateTaskStatusRequest request) {
         return ResponseEntity.ok(taskService.updateTaskStatus(taskId, request));
     }
 

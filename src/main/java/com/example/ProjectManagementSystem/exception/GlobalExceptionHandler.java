@@ -2,6 +2,7 @@ package com.example.ProjectManagementSystem.exception;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -57,6 +58,24 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiErrorResponse> handleIllegalState(IllegalStateException ex) {
         ApiErrorResponse response = new ApiErrorResponse(
                 LocalDateTime.now(), 400, "Bad Request", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ApiErrorResponse> handleIllegalArgument(IllegalArgumentException ex) {
+        ApiErrorResponse response = new ApiErrorResponse(
+                LocalDateTime.now(), 400, "Bad Request", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ApiErrorResponse> handleNotReadable(HttpMessageNotReadableException ex) {
+        String message = "Invalid request body. Please check field values and types.";
+        if (ex.getMessage() != null && ex.getMessage().contains("not one of the values accepted")) {
+            message = "Invalid status value provided. Check allowed status values.";
+        }
+        ApiErrorResponse response = new ApiErrorResponse(
+                LocalDateTime.now(), 400, "Bad Request", message);
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
     }
 }

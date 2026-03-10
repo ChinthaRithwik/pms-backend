@@ -5,6 +5,7 @@ import com.example.ProjectManagementSystem.dto.userDtos.AuthDtos.LoginResponse;
 import com.example.ProjectManagementSystem.dto.userDtos.AuthDtos.SignupRequest;
 import com.example.ProjectManagementSystem.dto.userDtos.AuthDtos.SignupResponse;
 import com.example.ProjectManagementSystem.entity.User;
+import com.example.ProjectManagementSystem.entity.enums.Role;
 import com.example.ProjectManagementSystem.exception.InvalidCredentialsException;
 import com.example.ProjectManagementSystem.exception.UserAlreadyExistsException;
 import com.example.ProjectManagementSystem.repository.UserRepository;
@@ -38,7 +39,7 @@ public class AuthServiceImpl implements AuthService {
                 .name(request.getName())
                 .email(request.getEmail())
                 .password(passwordEncoder.encode(request.getPassword()))
-
+                .role(Role.USER)
                 .build();
         User savedUser = userRepository.save(user);
         return modelMapper.map(savedUser, SignupResponse.class);

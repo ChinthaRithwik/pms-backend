@@ -14,6 +14,7 @@ import com.example.ProjectManagementSystem.security.SecurityUtils;
 import com.example.ProjectManagementSystem.service.ProjectService;
 import com.example.ProjectManagementSystem.helper.AllowedTransitions;
 import com.example.ProjectManagementSystem.entity.enums.TaskStatus;
+import com.example.ProjectManagementSystem.entity.enums.Role;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
 import org.springframework.data.domain.Page;
@@ -84,10 +85,20 @@ public class ProjectServiceImpl implements ProjectService {
     public ProjectResponse updateProjectById(UpdateProjectRequest request, Long id) {
         User owner = getAuthenticatedUser();
         logger.info("Updating project id: {} for owner: {}", id, owner.getName());
-        Project project = projectRepository.findByIdAndOwner(id, owner).orElseThrow(() -> {
-            logger.warn("Project id: {} not found for owner: {}", id, owner.getName());
-            return new ResourceNotFoundException("No Project found with ID: " + id);
-        });
+
+        Project project;
+        if (owner.getRole() == Role.ADMIN) {
+            // Admins can update any project
+            project = projectRepository.findById(id).orElseThrow(() -> {
+                logger.warn("Project id: {} not found", id);
+                return new ResourceNotFoundException("No Project found with ID: " + id);
+            });
+        } else {
+            project = projectRepository.findByIdAndOwner(id, owner).orElseThrow(() -> {
+                logger.warn("Project id: {} not found for owner: {}", id, owner.getName());
+                return new ResourceNotFoundException("No Project found with ID: " + id);
+            });
+        }
 
         project.setName(request.getName());
         project.setDescription(request.getDescription());
