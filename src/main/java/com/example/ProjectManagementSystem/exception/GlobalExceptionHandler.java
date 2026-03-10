@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
+import org.springframework.security.authentication.BadCredentialsException;
 
 @RestControllerAdvice(basePackages = "com.example.ProjectManagementSystem.controller")
 public class GlobalExceptionHandler {
@@ -31,6 +32,13 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiErrorResponse> handleInvalidCredentials(InvalidCredentialsException ex) {
         ApiErrorResponse response = new ApiErrorResponse(
                 LocalDateTime.now(), 401, "Unauthorized", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
+    }
+
+    @ExceptionHandler(BadCredentialsException.class)
+    public ResponseEntity<ApiErrorResponse> handleBadCredentials(BadCredentialsException ex) {
+        ApiErrorResponse response = new ApiErrorResponse(
+                LocalDateTime.now(), 401, "Unauthorized", "Invalid email or password");
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
     }
 

@@ -28,6 +28,14 @@ public class JwtService {
 
     private Key getSignKey() {
         byte[] keyBytes = SECRET_KEY.getBytes();
+        if (keyBytes.length < 32) {
+            try {
+                java.security.MessageDigest md = java.security.MessageDigest.getInstance("SHA-256");
+                keyBytes = md.digest(keyBytes);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }
         return Keys.hmacShaKeyFor(keyBytes);
     }
 
