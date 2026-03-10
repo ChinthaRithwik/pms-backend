@@ -10,7 +10,6 @@ import com.example.ProjectManagementSystem.entity.enums.StatusTypes;
 import com.example.ProjectManagementSystem.exception.ResourceNotFoundException;
 import com.example.ProjectManagementSystem.repository.ProjectRepository;
 import com.example.ProjectManagementSystem.repository.UserRepository;
-import com.example.ProjectManagementSystem.repository.TaskRepository;
 import com.example.ProjectManagementSystem.security.SecurityUtils;
 import com.example.ProjectManagementSystem.service.ProjectService;
 import com.example.ProjectManagementSystem.helper.AllowedTransitions;
@@ -34,7 +33,6 @@ public class ProjectServiceImpl implements ProjectService {
     private final ProjectRepository projectRepository;
     private final ModelMapper modelMapper;
     private final UserRepository userRepository;
-    private final TaskRepository taskRepository;
     private static final Logger logger = LoggerFactory.getLogger(ProjectServiceImpl.class);
     private final SecurityUtils securityUtils;
 
@@ -116,7 +114,9 @@ public class ProjectServiceImpl implements ProjectService {
         }
 
         if (newStatus == StatusTypes.COMPLETED) {
-            long incompleteTasks = taskRepository.countByProjectIdAndStatusNot(id, TaskStatus.COMPLETED);
+            long incompleteTasks = project.getTasks().stream()
+                    .filter(t -> t.getStatus() != TaskStatus.COMPLETED)
+                    .count();
             if (incompleteTasks > 0) {
                 logger.warn("Cannot mark project id: {} as COMPLETED because it has {} incomplete tasks", id, incompleteTasks);
                 throw new IllegalStateException("Cannot complete project because it has incomplete tasks.");
