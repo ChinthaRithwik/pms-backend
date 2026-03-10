@@ -30,6 +30,13 @@ public class ProjectController {
         return ResponseEntity.ok(projectService.getAllProjects(pageable));
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
+    @GetMapping("/all")
+    public ResponseEntity<Page<ProjectResponse>> getAllSystemProjects(
+            @PageableDefault(size = 10, sort = "id") Pageable pageable) {
+        return ResponseEntity.ok(projectService.getAllSystemProjects(pageable));
+    }
+
     @PostMapping
     public ResponseEntity<ProjectResponse> createProject(
             @RequestBody @Valid CreateProjectRequest request) {

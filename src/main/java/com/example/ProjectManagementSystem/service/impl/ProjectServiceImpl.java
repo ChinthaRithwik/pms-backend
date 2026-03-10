@@ -44,6 +44,14 @@ public class ProjectServiceImpl implements ProjectService {
     }
 
     @Override
+    public Page<ProjectResponse> getAllSystemProjects(Pageable pageable) {
+        logger.info("Admin fetching all system projects page: {} size: {}",
+                pageable.getPageNumber(), pageable.getPageSize());
+        return projectRepository.findAll(pageable)
+                .map(p -> modelMapper.map(p, ProjectResponse.class));
+    }
+
+    @Override
     public ProjectResponse createNewProject(CreateProjectRequest myProject) {
 
         User owner = getAuthenticatedUser();

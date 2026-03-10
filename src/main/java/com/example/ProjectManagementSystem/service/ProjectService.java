@@ -11,6 +11,8 @@ public interface ProjectService {
 
     Page<ProjectResponse> getAllProjects(Pageable pageable);
 
+    Page<ProjectResponse> getAllSystemProjects(Pageable pageable);
+
     ProjectResponse createNewProject(CreateProjectRequest myProject);
 
     ProjectResponse getProjectById(Long id);
