@@ -164,8 +164,8 @@ public class TaskServiceImpl implements TaskService {
         }
         Set<TaskStatus> validNextStates=allowedTransitions.get(current);
         if(validNextStates==null || !validNextStates.contains(targetStatus)){
-            logger.warn("Invalid status transition");
-            throw new IllegalStateException("Invalid status transition");
+            logger.warn("Invalid status transition from {} to {}. Valid transitions: {}", current, targetStatus, validNextStates);
+            throw new IllegalStateException("Invalid status transition from " + current + " to " + targetStatus);
         }
         task.setStatus(targetStatus);
         updateProjectStatusBasedOnTasks(task.getProject());
