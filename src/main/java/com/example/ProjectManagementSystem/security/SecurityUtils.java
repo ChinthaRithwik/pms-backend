@@ -3,29 +3,25 @@ package com.example.ProjectManagementSystem.security;
 import com.example.ProjectManagementSystem.entity.User;
 import com.example.ProjectManagementSystem.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.context.annotation.Scope;
-import org.springframework.context.annotation.ScopedProxyMode;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
-import org.springframework.web.context.WebApplicationContext;
 
 import java.util.Optional;
 
 /**
- * Request-scoped utility that resolves the currently authenticated User.
- * The DB lookup happens at most ONCE per HTTP request: subsequent calls within
- * the same request reuse the cached result.
+ * Singleton utility that resolves the currently authenticated User.
+ * Uses a ThreadLocal cache so the DB is hit at most ONCE per thread/request,
+ * regardless of how many service methods call getCurrentUser().
  */
 @Component
-@Scope(value = WebApplicationContext.SCOPE_REQUEST, proxyMode = ScopedProxyMode.TARGET_CLASS)
 @RequiredArgsConstructor
 public class SecurityUtils {
 
     private final UserRepository userRepository;
 
-    // Cache field — populated on the first call within this request
-    private User cachedUser;
+    // ThreadLocal cache: cleared after each request via clearCache()
+    private static final ThreadLocal<User> userCache = new ThreadLocal<>();
 
     public String getCurrentUserEmail() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
@@ -33,13 +29,26 @@ public class SecurityUtils {
     }
 
     /**
-     * Returns the authenticated User entity, hitting the DB only once per request.
+     * Returns the authenticated User entity. Hits the DB only on the first call
+     * per thread; subsequent calls within the same request return the cached value.
      */
     public Optional<User> getCurrentUser() {
-        if (cachedUser == null) {
+        User cached = userCache.get();
+        if (cached == null) {
             String email = getCurrentUserEmail();
-            cachedUser = userRepository.findByEmail(email).orElse(null);
+            cached = userRepository.findByEmail(email).orElse(null);
+            if (cached != null) {
+                userCache.set(cached);
+            }
         }
-        return Optional.ofNullable(cachedUser);
+        return Optional.ofNullable(cached);
+    }
+
+    /**
+     * Must be called at the end of each request to prevent ThreadLocal leaks.
+     * Called by SecurityUtilsClearingFilter.
+     */
+    public static void clearCache() {
+        userCache.remove();
     }
 }
