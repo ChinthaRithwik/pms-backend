@@ -43,4 +43,13 @@ public class TaskSpecification {
             return cb.lessThanOrEqualTo(root.get("dueDate"), date);
         };
     }
+
+    public static Specification<Task> hasProjectOwner(Long ownerId) {
+        return (root, query, cb) -> {
+            if (ownerId == null) {
+                return cb.conjunction();
+            }
+            return cb.equal(root.get("project").get("owner").get("id"), ownerId);
+        };
+    }
 }

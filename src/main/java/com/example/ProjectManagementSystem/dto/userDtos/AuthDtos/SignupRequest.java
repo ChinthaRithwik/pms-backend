@@ -11,6 +11,8 @@ import lombok.Getter;
 public class SignupRequest {
 
     @Schema(example = "rithwik")
+    @NotBlank(message = "Name should not be blank")
+    @Size(max = 50)
     private String name;
 
     @Schema(example = "rithwik@gmail.com")

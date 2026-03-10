@@ -12,6 +12,8 @@ import com.example.ProjectManagementSystem.repository.TaskRepository;
 import com.example.ProjectManagementSystem.repository.UserRepository;
 import com.example.ProjectManagementSystem.service.TaskService;
 import com.example.ProjectManagementSystem.specification.TaskSpecification;
+import com.example.ProjectManagementSystem.security.SecurityUtils;
+import com.example.ProjectManagementSystem.entity.enums.Role;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
 import org.springframework.data.domain.Page;
@@ -36,6 +38,7 @@ public class TaskServiceImpl implements TaskService {
     private final ProjectRepository projectRepository;
     private final ModelMapper modelMapper;
     private final UserRepository userRepository;
+    private final SecurityUtils securityUtils;
     private static final Logger logger =LoggerFactory.getLogger(TaskServiceImpl.class);
 
     @Override
@@ -51,6 +54,7 @@ public class TaskServiceImpl implements TaskService {
             logger.warn("Cannot add tasks to a closed project");
             throw new IllegalStateException("Cannot add tasks to a closed project");
         }
+        verifyProjectOwnershipOrAdmin(project);
         User user = null;
         if (request.getAssignedUserId() != null) {
             user = userRepository.findById(request.getAssignedUserId()).orElseThrow(() ->{
@@ -115,6 +119,7 @@ public class TaskServiceImpl implements TaskService {
             logger.warn("Cannot modify task of Cancelled Project");
             throw new IllegalStateException("Cannot modify task of Cancelled Project");
         }
+        verifyTaskOwnershipOrAdmin(task);
         logger.info("Updating task with id: {}", taskId);
         modelMapper.map(request,task);
         taskRepository.save(task);
@@ -130,10 +135,11 @@ public class TaskServiceImpl implements TaskService {
             logger.warn("Task not found with id: {}", taskId);
             return new ResourceNotFoundException("Task not found with ID:" + taskId);
         });
-        if(task.getProject().getStatus()== StatusTypes.COMPLETED){
-            logger.warn("Task cannot be deleted from a completed Project");
-            throw new IllegalStateException("Task cannot be deleted from a completed Project");
+        if(task.getProject().getStatus()== StatusTypes.COMPLETED || task.getProject().getStatus() == StatusTypes.CANCELLED){
+            logger.warn("Task cannot be deleted from a completed or cancelled Project");
+            throw new IllegalStateException("Task cannot be deleted from a completed or cancelled Project");
         }
+        verifyTaskOwnershipOrAdmin(task);
         if(task.getStatus()==TaskStatus.IN_PROGRESS || task.getStatus()==TaskStatus.COMPLETED){
             logger.warn("Task cannot be deleted");
             throw new IllegalStateException("Task cannot be deleted");
@@ -155,6 +161,7 @@ public class TaskServiceImpl implements TaskService {
             logger.warn("Cannot update task when project is not active");
             throw new IllegalStateException("Cannot update task when project is not active");
         }
+        verifyTaskOwnershipOrAdmin(task);
         logger.info("Updating task's status with id: {}", taskId);
         TaskStatus current=task.getStatus();
         TaskStatus targetStatus=request.getStatus();
@@ -185,6 +192,7 @@ public class TaskServiceImpl implements TaskService {
             logger.warn("Cannot reassign task that is completed");
             throw new IllegalStateException("Cannot reassign task that is completed");
         }
+        verifyTaskOwnershipOrAdmin(task);
         logger.info("Reassigning task with id:{} to new user with id:{}",taskId,request.getAssignedUserId());
         if(request.getAssignedUserId()!=null){
             User newUser=userRepository.findById(request.getAssignedUserId()).orElseThrow(() -> {
@@ -202,7 +210,13 @@ public class TaskServiceImpl implements TaskService {
     @Override
     public Page<TaskResponse> getOverDueTasks(Pageable pageable) {
         logger.info("Fetching overdue tasks");
-        Page<Task> tasks=taskRepository.findByDueDateBeforeAndStatusNot(LocalDate.now(),TaskStatus.COMPLETED,pageable);
+        User currentUser = getAuthenticatedUser();
+        Page<Task> tasks;
+        if (currentUser.getRole() == Role.ADMIN) {
+            tasks = taskRepository.findByDueDateBeforeAndStatusNot(LocalDate.now(), TaskStatus.COMPLETED, pageable);
+        } else {
+            tasks = taskRepository.findByDueDateBeforeAndStatusNotAndProjectOwner(LocalDate.now(), TaskStatus.COMPLETED, currentUser, pageable);
+        }
         if(tasks.isEmpty()){
             logger.info("No overdue tasks found");
         }
@@ -215,10 +229,15 @@ public class TaskServiceImpl implements TaskService {
             LocalDate dueBefore,
             Pageable pageable) {
 
+        User currentUser = getAuthenticatedUser();
         Specification<Task> spec = TaskSpecification.hasProject(projectId)
                 .and(TaskSpecification.hasStatus(status))
                 .and(TaskSpecification.hasAssignedUser(assignedUserId))
                 .and(TaskSpecification.dueBefore(dueBefore));
+
+        if (currentUser.getRole() != Role.ADMIN) {
+            spec = spec.and(TaskSpecification.hasProjectOwner(currentUser.getId()));
+        }
 
         Page<Task> tasks = taskRepository.findAll(spec, pageable);
 
@@ -241,6 +260,28 @@ public class TaskServiceImpl implements TaskService {
             project.setStatus(StatusTypes.IN_PROGRESS);
         }
     }
+
+    public java.util.Optional<User> getCurrentUser() {
+        String email = securityUtils.getCurrentUserEmail();
+        return userRepository.findByEmail(email);
+    }
+
+    private User getAuthenticatedUser() {
+        return getCurrentUser().orElseThrow(() ->
+                new ResourceNotFoundException("Logged-in user not found"));
+    }
+
+    private void verifyProjectOwnershipOrAdmin(Project project) {
+        User currentUser = getAuthenticatedUser();
+        if (currentUser.getRole() != Role.ADMIN && !project.getOwner().getId().equals(currentUser.getId())) {
+             throw new IllegalStateException("You do not have permission to modify tasks in this project");
+        }
+    }
+
+    private void verifyTaskOwnershipOrAdmin(Task task) {
+        verifyProjectOwnershipOrAdmin(task.getProject());
+    }
+
     private TaskResponse mapToResponse(Task task) {
         TaskResponse response = modelMapper.map(task, TaskResponse.class);
         response.setProjectId(task.getProject().getId());

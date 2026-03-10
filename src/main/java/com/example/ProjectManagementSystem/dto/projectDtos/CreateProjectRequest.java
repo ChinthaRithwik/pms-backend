@@ -1,7 +1,7 @@
 package com.example.ProjectManagementSystem.dto.projectDtos;
 
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
+
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 import lombok.Getter;
@@ -17,6 +17,4 @@ public class CreateProjectRequest {
     @Size(max = 500, message = "Description must not exceed 500 characters")
     private String description;
 
-    @NotNull(message = "Owner is required")
-    private Long ownerId;
 }

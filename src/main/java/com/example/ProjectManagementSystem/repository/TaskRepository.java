@@ -34,4 +34,6 @@ public interface TaskRepository extends JpaRepository<Task,Long>, JpaSpecificati
     Page<Task> findByAssignedUserId(Long myId,Pageable pageable);
 
     Page<Task> findByDueDateBeforeAndStatusNot(LocalDate dueDate,TaskStatus status,Pageable pageable);
+
+    Page<Task> findByDueDateBeforeAndStatusNotAndProjectOwner(LocalDate dueDate, TaskStatus status, com.example.ProjectManagementSystem.entity.User owner, Pageable pageable);
 }

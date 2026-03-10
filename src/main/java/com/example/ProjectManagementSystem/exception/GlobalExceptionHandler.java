@@ -78,4 +78,12 @@ public class GlobalExceptionHandler {
                 LocalDateTime.now(), 400, "Bad Request", message);
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
     }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ApiErrorResponse> handleAll(Exception ex) {
+        org.slf4j.LoggerFactory.getLogger(GlobalExceptionHandler.class).error("Unexpected error", ex);
+        return ResponseEntity.status(500)
+          .body(new ApiErrorResponse(LocalDateTime.now(), 500,
+                "Internal Server Error", "An unexpected error occurred."));
+    }
 }
