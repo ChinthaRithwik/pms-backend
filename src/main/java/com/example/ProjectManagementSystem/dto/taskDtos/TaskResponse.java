@@ -5,7 +5,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.time.LocalDate;
-import java.time.Instant;
+import java.time.LocalDateTime;
 
 @Setter
 @Getter
@@ -23,7 +23,7 @@ public class TaskResponse {
 
     private Long assignedUserId;
 
-    private Instant createdAt;
+    private LocalDateTime createdAt;
 
-    private Instant updatedAt;
+    private LocalDateTime updatedAt;
 }
