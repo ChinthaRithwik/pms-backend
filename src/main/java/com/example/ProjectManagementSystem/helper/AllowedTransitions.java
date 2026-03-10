@@ -1,5 +1,6 @@
 package com.example.ProjectManagementSystem.helper;
 
+import com.example.ProjectManagementSystem.entity.enums.StatusTypes;
 import com.example.ProjectManagementSystem.entity.enums.TaskStatus;
 
 import java.util.EnumMap;
@@ -19,6 +20,24 @@ public class AllowedTransitions {
                 Set.of(TaskStatus.IN_PROGRESS));
 
         allowedTransitions.put(TaskStatus.COMPLETED,
+                Set.of());
+    }
+
+    public static final Map<StatusTypes, Set<StatusTypes>> projectStatusAllowedTransitions = new EnumMap<>(StatusTypes.class);
+    static {
+        projectStatusAllowedTransitions.put(StatusTypes.PLANNED,
+                Set.of(StatusTypes.IN_PROGRESS, StatusTypes.CANCELLED));
+
+        projectStatusAllowedTransitions.put(StatusTypes.IN_PROGRESS,
+                Set.of(StatusTypes.ON_HOLD, StatusTypes.COMPLETED, StatusTypes.CANCELLED));
+
+        projectStatusAllowedTransitions.put(StatusTypes.ON_HOLD,
+                Set.of(StatusTypes.IN_PROGRESS, StatusTypes.CANCELLED));
+
+        projectStatusAllowedTransitions.put(StatusTypes.COMPLETED,
+                Set.of());
+
+        projectStatusAllowedTransitions.put(StatusTypes.CANCELLED,
                 Set.of());
     }
 }

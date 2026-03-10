@@ -10,8 +10,11 @@ import com.example.ProjectManagementSystem.entity.enums.StatusTypes;
 import com.example.ProjectManagementSystem.exception.ResourceNotFoundException;
 import com.example.ProjectManagementSystem.repository.ProjectRepository;
 import com.example.ProjectManagementSystem.repository.UserRepository;
+import com.example.ProjectManagementSystem.repository.TaskRepository;
 import com.example.ProjectManagementSystem.security.SecurityUtils;
 import com.example.ProjectManagementSystem.service.ProjectService;
+import com.example.ProjectManagementSystem.helper.AllowedTransitions;
+import com.example.ProjectManagementSystem.entity.enums.TaskStatus;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
 import org.springframework.data.domain.Page;
@@ -31,6 +34,7 @@ public class ProjectServiceImpl implements ProjectService {
     private final ProjectRepository projectRepository;
     private final ModelMapper modelMapper;
     private final UserRepository userRepository;
+    private final TaskRepository taskRepository;
     private static final Logger logger = LoggerFactory.getLogger(ProjectServiceImpl.class);
     private final SecurityUtils securityUtils;
 
@@ -102,8 +106,25 @@ public class ProjectServiceImpl implements ProjectService {
             logger.warn("Project id: {} not found", id);
             return new ResourceNotFoundException("No Project found with ID: " + id);
         });
-        project.setStatus(request.getStatus());
-        logger.info("Project id: {} status updated to {}", id, request.getStatus());
+
+        StatusTypes currentStatus = project.getStatus();
+        StatusTypes newStatus = request.getStatus();
+
+        if (!AllowedTransitions.projectStatusAllowedTransitions.getOrDefault(currentStatus, java.util.Set.of()).contains(newStatus)) {
+            logger.warn("Invalid project status transition from {} to {}", currentStatus, newStatus);
+            throw new IllegalStateException("Cannot transition project status from " + currentStatus + " to " + newStatus);
+        }
+
+        if (newStatus == StatusTypes.COMPLETED) {
+            long incompleteTasks = taskRepository.countByProjectIdAndStatusNot(id, TaskStatus.COMPLETED);
+            if (incompleteTasks > 0) {
+                logger.warn("Cannot mark project id: {} as COMPLETED because it has {} incomplete tasks", id, incompleteTasks);
+                throw new IllegalStateException("Cannot complete project because it has incomplete tasks.");
+            }
+        }
+
+        project.setStatus(newStatus);
+        logger.info("Project id: {} status updated to {}", id, newStatus);
         return modelMapper.map(project, ProjectResponse.class);
     }
 
