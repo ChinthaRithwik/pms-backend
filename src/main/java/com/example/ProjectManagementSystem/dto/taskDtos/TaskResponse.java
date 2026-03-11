@@ -23,6 +23,8 @@ public class TaskResponse {
 
     private Long assignedUserId;
 
+    private String assignedUserName;
+
     private LocalDateTime createdAt;
 
     private LocalDateTime updatedAt;

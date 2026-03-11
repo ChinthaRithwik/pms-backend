@@ -55,19 +55,27 @@ public class TaskServiceImpl implements TaskService {
             throw new IllegalStateException("Cannot add tasks to a closed project");
         }
         verifyProjectOwnershipOrAdmin(project);
-        User user = null;
-        if (request.getAssignedUserId() != null) {
-            user = userRepository.findById(request.getAssignedUserId()).orElseThrow(() ->{
-               logger.warn("User not found with id: {}", request.getAssignedUserId());
-               return new ResourceNotFoundException("User not found with ID:" + request.getAssignedUserId());
-                    });
+        User currentUser = getAuthenticatedUser();
+        User assignedUser;
+        if (currentUser.getRole() == Role.ADMIN) {
+            if (request.getAssignedUserId() == null) {
+                logger.warn("ADMIN must provide an assignedUserId when creating a task");
+                throw new IllegalArgumentException("Assigned user is required for ADMIN");
+            }
+            assignedUser = userRepository.findById(request.getAssignedUserId()).orElseThrow(() -> {
+                logger.warn("User not found with id: {}", request.getAssignedUserId());
+                return new ResourceNotFoundException("User not found with ID: " + request.getAssignedUserId());
+            });
+        } else {
+            // Regular USER is automatically assigned to themselves
+            assignedUser = currentUser;
         }
         logger.info("Creating new task with title: {}", request.getTitle());
         Task task=new Task();
         task.setTitle(request.getTitle());
         task.setDueDate(request.getDueDate());
         task.setStatus(TaskStatus.TODO);
-        task.setAssignedUser(user);
+        task.setAssignedUser(assignedUser);
         project.addTask(task);
         Task savedTask = taskRepository.save(task);
         logger.info("Task created successfully with id: {}", savedTask.getId());
@@ -81,7 +89,7 @@ public class TaskServiceImpl implements TaskService {
             logger.warn("project not found with ID:"+projectId);
             throw new ResourceNotFoundException("project not found with ID:"+projectId);
         }
-       logger.info("Fetching all projects with page number: {}, page size: {}",
+        logger.info("Fetching all projects with page number: {}, page size: {}",
                 pageable.getPageNumber(), pageable.getPageSize());
         Page<Task> tasks;
         if(status!=null){
@@ -257,16 +265,12 @@ public class TaskServiceImpl implements TaskService {
         }
         long incompleteTasks = taskRepository.countByProjectIdAndStatusNot(project.getId(), TaskStatus.COMPLETED);
         if (incompleteTasks == 0) {
-            // FIX H3: only auto-complete if the transition is actually allowed.
-            // PLANNED → COMPLETED is forbidden; only IN_PROGRESS → COMPLETED is valid.
             Set<StatusTypes> allowed = com.example.ProjectManagementSystem.helper.AllowedTransitions
                     .projectStatusAllowedTransitions
                     .getOrDefault(project.getStatus(), Set.of());
             if (allowed.contains(StatusTypes.COMPLETED)) {
                 project.setStatus(StatusTypes.COMPLETED);
             }
-            // If transition is not allowed (e.g. PLANNED with 0 incomplete tasks),
-            // leave the project status unchanged rather than creating an illegal state.
         } else {
             project.setStatus(StatusTypes.IN_PROGRESS);
         }
@@ -280,20 +284,16 @@ public class TaskServiceImpl implements TaskService {
     private void verifyProjectOwnershipOrAdmin(Project project) {
         User currentUser = getAuthenticatedUser();
         if (currentUser.getRole() != Role.ADMIN && !project.getOwner().getId().equals(currentUser.getId())) {
-             throw new IllegalStateException("You do not have permission to modify tasks in this project");
+            throw new IllegalStateException("You do not have permission to modify tasks in this project");
         }
     }
-
-    // FIX H2: Separately check task-level ownership:
-    // Allow if user is ADMIN, project owner, OR the task's assigned user.
-    // Previously this delegated blindly to verifyProjectOwnershipOrAdmin,
-    // which meant assignees could never update/edit/delete their own tasks.
+ 
     private void verifyTaskOwnershipOrAdmin(Task task) {
         User currentUser = getAuthenticatedUser();
         boolean isAdmin       = currentUser.getRole() == Role.ADMIN;
         boolean isProjectOwner= task.getProject().getOwner().getId().equals(currentUser.getId());
         boolean isAssignee    = task.getAssignedUser() != null
-                                && task.getAssignedUser().getId().equals(currentUser.getId());
+                && task.getAssignedUser().getId().equals(currentUser.getId());
         if (!isAdmin && !isProjectOwner && !isAssignee) {
             throw new IllegalStateException("You do not have permission to modify this task");
         }
@@ -302,9 +302,10 @@ public class TaskServiceImpl implements TaskService {
     private TaskResponse mapToResponse(Task task) {
         TaskResponse response = modelMapper.map(task, TaskResponse.class);
         response.setProjectId(task.getProject().getId());
-        response.setAssignedUserId(
-                task.getAssignedUser() != null ? task.getAssignedUser().getId() : null
-        );
+        if (task.getAssignedUser() != null) {
+            response.setAssignedUserId(task.getAssignedUser().getId());
+            response.setAssignedUserName(task.getAssignedUser().getName());
+        }
         return response;
     }
 }
