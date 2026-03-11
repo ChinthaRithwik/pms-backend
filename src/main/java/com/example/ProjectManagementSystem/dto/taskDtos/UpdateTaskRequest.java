@@ -8,12 +8,11 @@ import lombok.Setter;
 
 import java.time.LocalDate;
 
-import jakarta.validation.constraints.FutureOrPresent;
 
 @Data
 public class UpdateTaskRequest {
     @NotBlank(message = "title should not be blank")
     private String title;
-    @FutureOrPresent(message = "Due date cannot be in the past")
+    // FIX C3: No @FutureOrPresent — allows editing tasks that already have a past due date
     private LocalDate dueDate;
 }

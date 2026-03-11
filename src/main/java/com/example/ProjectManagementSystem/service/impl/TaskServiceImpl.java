@@ -222,6 +222,8 @@ public class TaskServiceImpl implements TaskService {
         }
         return tasks.map(this::mapToResponse);
     }
+
+    @Override
     public Page<TaskResponse> searchTasks(
             Long projectId,
             TaskStatus status,
@@ -245,18 +247,27 @@ public class TaskServiceImpl implements TaskService {
     }
 
     private void updateProjectStatusBasedOnTasks(Project project) {
-        if(project.getStatus()==StatusTypes.ON_HOLD || project.getStatus()== StatusTypes.CANCELLED){
+        if (project.getStatus() == StatusTypes.ON_HOLD || project.getStatus() == StatusTypes.CANCELLED) {
             return;
         }
-        long countTasks=taskRepository.countByProjectId(project.getId());
-        if(countTasks == 0){
+        long countTasks = taskRepository.countByProjectId(project.getId());
+        if (countTasks == 0) {
             project.setStatus(StatusTypes.PLANNED);
             return;
         }
-        long incompleteTasks= taskRepository.countByProjectIdAndStatusNot(project.getId(),TaskStatus.COMPLETED);
-        if(incompleteTasks==0){
-            project.setStatus(StatusTypes.COMPLETED);
-        }else{
+        long incompleteTasks = taskRepository.countByProjectIdAndStatusNot(project.getId(), TaskStatus.COMPLETED);
+        if (incompleteTasks == 0) {
+            // FIX H3: only auto-complete if the transition is actually allowed.
+            // PLANNED → COMPLETED is forbidden; only IN_PROGRESS → COMPLETED is valid.
+            Set<StatusTypes> allowed = com.example.ProjectManagementSystem.helper.AllowedTransitions
+                    .projectStatusAllowedTransitions
+                    .getOrDefault(project.getStatus(), Set.of());
+            if (allowed.contains(StatusTypes.COMPLETED)) {
+                project.setStatus(StatusTypes.COMPLETED);
+            }
+            // If transition is not allowed (e.g. PLANNED with 0 incomplete tasks),
+            // leave the project status unchanged rather than creating an illegal state.
+        } else {
             project.setStatus(StatusTypes.IN_PROGRESS);
         }
     }
@@ -273,8 +284,19 @@ public class TaskServiceImpl implements TaskService {
         }
     }
 
+    // FIX H2: Separately check task-level ownership:
+    // Allow if user is ADMIN, project owner, OR the task's assigned user.
+    // Previously this delegated blindly to verifyProjectOwnershipOrAdmin,
+    // which meant assignees could never update/edit/delete their own tasks.
     private void verifyTaskOwnershipOrAdmin(Task task) {
-        verifyProjectOwnershipOrAdmin(task.getProject());
+        User currentUser = getAuthenticatedUser();
+        boolean isAdmin       = currentUser.getRole() == Role.ADMIN;
+        boolean isProjectOwner= task.getProject().getOwner().getId().equals(currentUser.getId());
+        boolean isAssignee    = task.getAssignedUser() != null
+                                && task.getAssignedUser().getId().equals(currentUser.getId());
+        if (!isAdmin && !isProjectOwner && !isAssignee) {
+            throw new IllegalStateException("You do not have permission to modify this task");
+        }
     }
 
     private TaskResponse mapToResponse(Task task) {

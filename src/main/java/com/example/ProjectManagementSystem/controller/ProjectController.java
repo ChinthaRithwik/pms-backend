@@ -61,7 +61,6 @@ public class ProjectController {
         return ResponseEntity.ok(projectService.updateProjectById(request, id));
     }
 
-    @PreAuthorize("hasRole('ADMIN')")
     @PatchMapping("/{id}/status")
     public ResponseEntity<ProjectResponse> updateProjectStatus(
             @PathVariable Long id,

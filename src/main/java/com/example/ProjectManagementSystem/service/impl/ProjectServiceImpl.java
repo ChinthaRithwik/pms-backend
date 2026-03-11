@@ -71,11 +71,20 @@ public class ProjectServiceImpl implements ProjectService {
     @Override
     public ProjectResponse getProjectById(Long id) {
         User owner = getAuthenticatedUser();
-        logger.info("Fetching project id: {} for owner: {}", id, owner.getName());
-        Project project = projectRepository.findByIdAndOwner(id, owner).orElseThrow(() -> {
-            logger.warn("Project id: {} not found for owner: {}", id, owner.getName());
-            return new ResourceNotFoundException("No Project found with ID: " + id);
-        });
+        logger.info("Fetching project id: {} for user: {}", id, owner.getName());
+        // FIX C2: Admins can view any project, not just their own
+        Project project;
+        if (owner.getRole() == Role.ADMIN) {
+            project = projectRepository.findById(id).orElseThrow(() -> {
+                logger.warn("Project id: {} not found", id);
+                return new ResourceNotFoundException("No Project found with ID: " + id);
+            });
+        } else {
+            project = projectRepository.findByIdAndOwner(id, owner).orElseThrow(() -> {
+                logger.warn("Project id: {} not found for owner: {}", id, owner.getName());
+                return new ResourceNotFoundException("No Project found with ID: " + id);
+            });
+        }
         return modelMapper.map(project, ProjectResponse.class);
     }
 
@@ -108,12 +117,22 @@ public class ProjectServiceImpl implements ProjectService {
     @Transactional
     @Override
     public ProjectResponse updateProjectStatus(Long id, UpdateProjectStatusRequest request) {
-        logger.info("Admin updating status of project id: {} to {}", id, request.getStatus());
+        User currentUser = getAuthenticatedUser();
+        logger.info("User {} updating status of project id: {} to {}", currentUser.getName(), id, request.getStatus());
 
-        Project project = projectRepository.findById(id).orElseThrow(() -> {
-            logger.warn("Project id: {} not found", id);
-            return new ResourceNotFoundException("No Project found with ID: " + id);
-        });
+        // FIX M4: admins can change any project's status; owners can only change their own
+        Project project;
+        if (currentUser.getRole() == Role.ADMIN) {
+            project = projectRepository.findById(id).orElseThrow(() -> {
+                logger.warn("Project id: {} not found", id);
+                return new ResourceNotFoundException("No Project found with ID: " + id);
+            });
+        } else {
+            project = projectRepository.findByIdAndOwner(id, currentUser).orElseThrow(() -> {
+                logger.warn("Project id: {} not found for owner: {}", id, currentUser.getName());
+                return new ResourceNotFoundException("No Project found with ID: " + id);
+            });
+        }
 
         StatusTypes currentStatus = project.getStatus();
         StatusTypes newStatus = request.getStatus();
@@ -142,11 +161,20 @@ public class ProjectServiceImpl implements ProjectService {
     @Override
     public void deleteProjectById(Long id) {
         User owner = getAuthenticatedUser();
-        logger.info("Deleting project id: {} for owner: {}", id, owner.getName());
-        Project project = projectRepository.findByIdAndOwner(id, owner).orElseThrow(() -> {
-            logger.warn("Project id: {} not found for owner: {}", id, owner.getName());
-            return new ResourceNotFoundException("No Project found with ID: " + id);
-        });
+        logger.info("Deleting project id: {} for user: {}", id, owner.getName());
+        // FIX C2: Admins can delete any project, not just their own
+        Project project;
+        if (owner.getRole() == Role.ADMIN) {
+            project = projectRepository.findById(id).orElseThrow(() -> {
+                logger.warn("Project id: {} not found", id);
+                return new ResourceNotFoundException("No Project found with ID: " + id);
+            });
+        } else {
+            project = projectRepository.findByIdAndOwner(id, owner).orElseThrow(() -> {
+                logger.warn("Project id: {} not found for owner: {}", id, owner.getName());
+                return new ResourceNotFoundException("No Project found with ID: " + id);
+            });
+        }
         projectRepository.delete(project);
         logger.info("Project id: {} deleted", id);
     }
