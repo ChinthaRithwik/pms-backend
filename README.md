@@ -1,3 +1,4 @@
+![Build Status](https://github.com/ChinthaRithwik/pms-backend/actions/workflows/ci.yml/badge.svg)
 # 🗂️ Project Management System — Backend
 
 A RESTful backend API built with **Spring Boot 3** for managing projects, tasks, and users with role-based access control and JWT authentication.
